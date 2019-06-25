@@ -1,0 +1,76 @@
+version: '2'
+services:
+
+  wwwdata:
+    image: busybox
+    volumes:
+      - ./data/www:/var/www/html
+
+  nginx: 
+    build: ./nginx
+    ports: 
+      - "80:80"
+    links: 
+      - wordpress
+    volumes:
+      - ./nginx/server.conf:/etc/nginx/conf.d/server.conf
+    volumes_from:
+      - wwwdata
+
+  app:
+    build: tomcat/
+    hostname: appserver
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./tomcat/conf:/usr/local/tomcat/conf
+      - ./tomcat/log:/usr/local/tomcat/log
+    restart: always
+    environment:
+      - TOMCAT_USERNAME=usr
+      - TOMCAT_PASSWORD=usr
+    container_name: app01
+
+  db:
+    image: mysql:5.7
+    volumes:
+      - "./.data/db:/var/lib/mysql"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: wordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    links:
+      - db
+    ports:
+      - "8000:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_PASSWORD: wordpress
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: db:3306
+      PMA_USER: wordpress
+      PMA_PASSWORD: wordpress
+    restart: always
+    links:
+      - db
+    ports:
+      - "8001:80"
+    volumes:
+      - mysql-data:/path/to/data
+
+volumes:
+  mysql-data:
+    driver: local
+
